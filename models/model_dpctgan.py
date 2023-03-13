@@ -10,7 +10,7 @@ import numpy as np
 
 from models.model_ctgan import CTGANSynthesizer, Generator, Discriminator
 #from ctgan.synthesizers.ctgan import CTGANSynthesizer, Generator, Discriminator
-from rdp_accountant import compute_rdp, get_privacy_spent
+from utils.rdp_accountant import compute_rdp, get_privacy_spent
 
 from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
