@@ -11,7 +11,7 @@ def get_nearest(src_points, candidates, k_neighbors=1):
     '''
     # Create tree from the candidate points
     #knn = NearestNeighbors(n_neighbors=3)
-    tree = BallTree(candidates, leaf_size=15)
+    tree = BallTree(candidates, leaf_size=15, metric='euclidean')
     # Find closest points and distances
     distances, indices = tree.query(src_points, k=k_neighbors)
     # Transpose to get distances and indices into arrays
@@ -32,3 +32,11 @@ def avg_dist(src_points, candidates):
         sum_dist += dist
 
     return sum_dist/i 
+
+def normalized_avg_dist(src_points, candidates):
+    sum_dist = 0
+    for i in range(len(src_points)):
+        index, dist = get_nearest(src_points.iloc[[i]], candidates)
+        sum_dist += dist
+        
+    return (sum_dist/i)/np.sqrt(len(src_points.columns)) 
