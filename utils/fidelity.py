@@ -19,3 +19,19 @@ def get_predictions(X_train, y_train, X_test, y_test):
         
     return pred
 
+def eval_fidelity(pred1, pred2):
+    same_pred = 0
+    dif_pred = 0
+    if len(pred1) != len(pred2):
+        print("Error: different sizes")
+    
+    for i in range(len(pred1)):
+        if pred1[i] == pred2[i]:
+            same_pred += 1
+        else:
+            dif_pred += 1
+
+    ratio = same_pred / (same_pred + dif_pred)
+
+    return ratio, same_pred, dif_pred
+

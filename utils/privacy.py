@@ -22,15 +22,16 @@ def get_nearest(src_points, candidates, k_neighbors=1):
     closest = indices[0]
     closest_dist = distances[0]
     # Return indices and distances
-    return closest, closest_dist, indices, distances
+    return closest, closest_dist
 
 
 def avg_dist(src_points, candidates):
-    sum_dist = []
+    sum_dist = 0
     for i in range(len(src_points)):
-        index, dist = get_nearest(src_points[i], candidates)
+        index, dist = get_nearest(src_points.iloc[[i]], candidates) 
         sum_dist += dist
 
+        
     return sum_dist/i 
 
 def normalized_avg_dist(src_points, candidates):
