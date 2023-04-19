@@ -26,12 +26,13 @@ class Main:
                             epochs=1,
                             clip_coeff=0.1,
                             sigma=4,
-                            target_epsilon=2, #4
+                            target_epsilon=1, #4
                             target_delta=1e-5
                             )
 
-    def prepare_data(self, sep=',', drop_columns=None):
+    def prepare_data(self, sep=',', drop_columns=None, flag=0):
         print("Preparing data...")
+
 
         df = pd.read_csv(self.dataset, sep = sep)
 
@@ -40,7 +41,8 @@ class Main:
 
         df = df.apply(pd.to_numeric)
         
-        df.loc[df["y"] > 1 , "y"] = 0   #TODO
+        if flag == 1:
+            df.loc[df["y"] > 1 , "y"] = 0
 
         df = (df-df.min())/(df.max()-df.min())
 
@@ -55,6 +57,9 @@ class Main:
         self.dpctgan.fit(data)
 
     def save_models(self, dataset_name):
+        if not os.path.exists('./saved_models'):
+            os.makedirs('./saved_models')
+
         torch.save(self.ctgan, './saved_models/ctgan' + dataset_name + '.pt')
         torch.save(self.dpctgan, './saved_models/dpctgan' + dataset_name + '.pt')
 
@@ -95,6 +100,52 @@ class Main:
         #ff_pred = get_predictions(X_syn_train, y_syn_train, X_syn_test, y_syn_test)
 
         return eval_fidelity(rr_pred, fr_pred)
+    
+    def save_results(self, name, fidelity, privacy):
+        if not os.path.exists('./results'):
+            os.makedirs('./results')
+        
+        # combine the fidelity and privacy lists into a list of tuples
+        results = list(zip(fidelity, privacy))
+
+        # open the file in write mode and write the results to it
+        with open(f"./results/{name}.txt", "w") as f:
+            for fidelity_val, privacy_val in results:
+                f.write(f"{fidelity_val}\t{privacy_val}\n")
+
+import sys
+
+if __name__ == '__main__':
+    dataset = sys.argv[1]
+    target = sys.argv[2]
+    drop_columns = sys.argv[3]
+    flag = int(sys.argv[4])
+    name = sys.argv[5]
+
+    run = Main(dataset, target)
+
+    data, X, y = run.prepare_data(drop_columns=drop_columns, flag=flag)
+
+    run.train(data)
+
+    run.save_models(name)
+
+    ctgan_samples, ctgan_X_syn, ctgan_y_syn  = run.generate('ctgan')
+    dpctgan_samples, dpctgan_X_syn, dpctgan_y_syn = run.generate('dpctgan')
+
+    ctgan_privacy = run.calculate_privacy(ctgan_samples, data)
+    dpctgan_privacy = run.calculate_privacy(dpctgan_samples, data)
+
+    ctgan_fidelity, _, _ = run.calculate_fidelity(X, y, ctgan_X_syn, ctgan_y_syn)
+    dpctgan_fidelity, _, _ = run.calculate_fidelity(X, y, dpctgan_X_syn, dpctgan_y_syn)
+
+
+    fidelity = [ctgan_fidelity, dpctgan_fidelity]
+    privacy = [ctgan_privacy, dpctgan_privacy]
+
+    run.save_results(name, fidelity, privacy)
+
+
     
 
 
