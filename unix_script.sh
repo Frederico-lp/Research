@@ -5,7 +5,7 @@
 echo "Running datasets"
 
 dataset_args=(
-    ("D:/Datasets/epileptic/Epileptic_Seizure_Recognition.csv" "y" "Unnamed" "1" "epileptic_seizure")
+    ("/homes/up201904580/epileptic/Epileptic_Seizure_Recognition.csv" "y" "Unnamed" "1" "epileptic_seizure")
     ("D:/Datasets/cardiovascular/cardio.csv", "cardio", "id", "2", "cardiovascular_disease")
     ("D:/Datasets/credit/creditcard.csv", "Class", "None", "0", "credit_card_fraud")
     ("D:/Datasets/diabetes/diabetes_012_health_indicators_BRFSS2015.csv", "Diabetes_012", "None", "0", "diabetes")

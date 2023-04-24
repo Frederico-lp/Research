@@ -33,8 +33,10 @@ class Main:
     def prepare_data(self, sep=',', drop_columns=None, flag=0):
         print("Preparing data...")
 
-
-        df = pd.read_csv(self.dataset, sep = sep)
+        if flag == 2:
+            df = pd.read_csv(self.dataset, sep =";")
+        else:
+            df = pd.read_csv(self.dataset, sep = sep)
 
         if drop_columns is not None:
             df = df.drop(columns=[drop_columns])
@@ -123,6 +125,9 @@ if __name__ == '__main__':
     name = sys.argv[5]
 
     run = Main(dataset, target)
+
+    if drop_columns == 'None':
+        drop_columns = None
 
     data, X, y = run.prepare_data(drop_columns=drop_columns, flag=flag)
 
