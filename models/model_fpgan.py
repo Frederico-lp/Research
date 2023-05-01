@@ -416,8 +416,16 @@ class FPGANSynthesizer(BaseSynthesizer):
                     #costumerized loss
                     #cross_entropy += avg_dist(fake, real)
 
-                loss_g = -torch.mean(y_fake) + cross_entropy
-                loss_g += self.avg_dist(fake, real) * 0.1
+                #loss_g = -torch.mean(y_fake) + cross_entropy
+                fidelity = -torch.mean(y_fake) + cross_entropy
+
+                privacy = self.avg_dist(fake, real)
+
+                rate = 1 - 0.05 * i
+                if rate < 0.5:
+                    rate = 0.5
+
+                loss_g = (fidelity * rate) + (privacy * (1 - rate))
 
                 optimizerG.zero_grad()
                 loss_g.backward()
