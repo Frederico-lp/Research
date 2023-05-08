@@ -13,7 +13,7 @@ from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
 from ctgan.synthesizers.base import BaseSynthesizer
 
-from utils.privacy import normalized_avg_dist, avg_dist
+from utils.privacy import normalized_avg_dist
 
 
 class Discriminator(Module):
@@ -284,6 +284,8 @@ class FPGANSynthesizer(BaseSynthesizer):
                 a ``pandas.DataFrame``, this list should contain the column names.
         """
         self._validate_discrete_columns(train_data, discrete_columns)
+        loss = []
+        privacy = []
 
         if epochs is None:
             epochs = self._epochs
@@ -296,6 +298,9 @@ class FPGANSynthesizer(BaseSynthesizer):
 
         self._transformer = DataTransformer()
         self._transformer.fit(train_data, discrete_columns)
+
+        ##mine
+        original_data = train_data.copy()
 
         train_data = self._transformer.transform(train_data)
 
@@ -372,17 +377,8 @@ class FPGANSynthesizer(BaseSynthesizer):
                     pen = discriminator.calc_gradient_penalty(
                         real_cat, fake_cat, self._device, self.pac)
                     
-                    fidelity = -(torch.mean(y_real) - torch.mean(y_fake))
-                    #costume loss
-                    # if i > 5:
-                    #     loss_d += self.avg_dist(fake, real)
-                    privacy = self.avg_dist(fake, real)
 
-                    rate = 1 - 0.05 * i
-                    if rate < 0.5:
-                        rate = 0.5
-
-                    loss_d = (fidelity * rate) + (privacy * (1 - rate))
+                    loss_d = -(torch.mean(y_real) - torch.mean(y_fake))
 
 
                     optimizerD.zero_grad()
@@ -418,15 +414,28 @@ class FPGANSynthesizer(BaseSynthesizer):
 
                 #loss_g = -torch.mean(y_fake) + cross_entropy
                 fidelity = -torch.mean(y_fake) + cross_entropy
+                pprivacy = - self.normalized_avg_dist(fakeact, real)
 
-                privacy = self.avg_dist(fake, real)
+                privacy.append(pprivacy.detach().cpu().numpy())
 
-                rate = 1 - 0.05 * i
-                if rate < 0.5:
-                    rate = 0.5
+            
+                rate = 0.1
+                # if rate < 0.5:
+                #     rate = 0.5
 
-                loss_g = (fidelity * rate) + (privacy * (1 - rate))
+                #loss_g = (fidelity * rate) + ( -pprivacy * (1 - rate))
+                loss_g = (fidelity * rate) + (pprivacy)
 
+                #loss_g = -torch.mean(y_fake) + cross_entropy
+
+                #loss.append(fidelity.detach().cpu().numpy() * rate)
+
+
+                ##############################################################
+                samples = self.sample(100)
+                test = normalized_avg_dist(samples, original_data[:100])
+                loss.append(test)
+                ##############################################################
                 optimizerG.zero_grad()
                 loss_g.backward()
                 optimizerG.step()
@@ -434,6 +443,9 @@ class FPGANSynthesizer(BaseSynthesizer):
             if self._verbose:
                 print(f"Epoch {i+1}, Loss G: {loss_g.detach().cpu(): .4f}," +
                       f"Loss D: {loss_d.detach().cpu(): .4f}")
+            
+
+        return privacy, loss
 
     def sample(self, n, condition_column=None, condition_value=None):
         """Sample data similar to the training data.
@@ -512,5 +524,17 @@ class FPGANSynthesizer(BaseSynthesizer):
 
     def avg_dist(self, src_points, candidates):
         dists = torch.cdist(src_points, candidates)
+        #print(src_points[0])
         min_dists, _ = torch.min(dists, dim=1)
         return torch.mean(min_dists)
+    
+    # def normalized_avg_dist(self, src_points, candidates):
+    #     dists = torch.cdist(src_points, candidates)
+    #     avg_dists = torch.mean(dists, dim=1)
+    #     return avg_dists / np.sqrt(len(candidates))
+    
+    def normalized_avg_dist(self, src_points, candidates):
+        dists = torch.cdist(src_points, candidates)
+        min_dists, _ = torch.min(dists, dim=1)
+        _, columns = candidates.shape
+        return torch.mean(min_dists) / np.sqrt(columns)
