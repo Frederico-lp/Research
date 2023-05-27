@@ -1,6 +1,6 @@
 import warnings
-
-from sklearn.neighbors import BallTree
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.model_selection import train_test_split
 
 import numpy as np
 import pandas as pd
@@ -284,8 +284,10 @@ class FPGANSynthesizer(BaseSynthesizer):
                 a ``pandas.DataFrame``, this list should contain the column names.
         """
         self._validate_discrete_columns(train_data, discrete_columns)
-        loss = []
-        privacy = []
+        losses = []
+        #real_privacies = []
+        tranformed_privacies = []
+        #fidelities = []
 
         if epochs is None:
             epochs = self._epochs
@@ -370,7 +372,7 @@ class FPGANSynthesizer(BaseSynthesizer):
                     else:
                         real_cat = real
                         fake_cat = fakeact
-
+                  
                     y_fake = discriminator(fake_cat)
                     y_real = discriminator(real_cat)
 
@@ -409,32 +411,38 @@ class FPGANSynthesizer(BaseSynthesizer):
                     cross_entropy = 0
                 else:
                     cross_entropy = self._cond_loss(fake, c1, m1)
-                    #costumerized loss
-                    #cross_entropy += avg_dist(fake, real)
 
-                #loss_g = -torch.mean(y_fake) + cross_entropy
-                fidelity = -torch.mean(y_fake) + cross_entropy
-                pprivacy = - self.normalized_avg_dist(fakeact, real)
 
-                privacy.append(pprivacy.detach().cpu().numpy())
+                rate = 0.15
+
+                loss = -torch.mean(y_fake) + cross_entropy
+                losses.append(loss.detach().cpu().numpy() * rate)
+
+                tranformed_privacy = -self.normalized_avg_dist(fakeact, real)
+                tranformed_privacies.append(-tranformed_privacy.detach().cpu().numpy())
 
             
-                rate = 0.1
                 # if rate < 0.5:
                 #     rate = 0.5
 
-                #loss_g = (fidelity * rate) + ( -pprivacy * (1 - rate))
-                loss_g = (fidelity * rate) + (pprivacy)
+                #loss_g = (loss * rate) + (tranformed_privacy)
 
                 #loss_g = -torch.mean(y_fake) + cross_entropy
+                loss_g = loss
 
-                #loss.append(fidelity.detach().cpu().numpy() * rate)
 
 
                 ##############################################################
-                samples = self.sample(100)
-                test = normalized_avg_dist(samples, original_data[:100])
-                loss.append(test)
+                # #privacy
+                # samples = self.sample(100)
+                # real_privacy = normalized_avg_dist(samples, original_data[:100])
+                # real_privacies.append(real_privacy)
+                ##############################################################
+                # #fidelity
+                # pred1 = self.get_predictions(samples)
+                # pred2 = self.get_predictions(original_data[:100])
+                # fidelity, _, _ = self.eval_fidelity(pred1, pred2)
+                # fidelities.append(fidelity)
                 ##############################################################
                 optimizerG.zero_grad()
                 loss_g.backward()
@@ -445,7 +453,8 @@ class FPGANSynthesizer(BaseSynthesizer):
                       f"Loss D: {loss_d.detach().cpu(): .4f}")
             
 
-        return privacy, loss
+        #return losses, real_privacies, tranformed_privacies, fidelities
+        return losses, tranformed_privacies
 
     def sample(self, n, condition_column=None, condition_value=None):
         """Sample data similar to the training data.
@@ -503,24 +512,6 @@ class FPGANSynthesizer(BaseSynthesizer):
         if self._generator is not None:
             self._generator.to(self._device)
 
-    def get_nearest(self, src_points, candidates, k_neighbors=1):
-        '''
-        Find nearest neighbors for all source points from a set of candidate points
-        '''
-        # Create tree from the candidate points
-        #knn = NearestNeighbors(n_neighbors=3)
-        tree = BallTree(candidates, leaf_size=15, metric='euclidean')
-        # Find closest points and distances
-        distances, indices = tree.query(src_points, k=k_neighbors)
-        # Transpose to get distances and indices into arrays
-        distances = distances.transpose()
-        indices = indices.transpose()
-        # Get closest indices and distances (i.e. array at index 0)
-        # note: for the second closest points, you would take index 1, etc.
-        closest = indices[0]
-        closest_dist = distances[0]
-        # Return indices and distances
-        return closest, closest_dist
 
     def avg_dist(self, src_points, candidates):
         dists = torch.cdist(src_points, candidates)
@@ -528,13 +519,46 @@ class FPGANSynthesizer(BaseSynthesizer):
         min_dists, _ = torch.min(dists, dim=1)
         return torch.mean(min_dists)
     
-    # def normalized_avg_dist(self, src_points, candidates):
-    #     dists = torch.cdist(src_points, candidates)
-    #     avg_dists = torch.mean(dists, dim=1)
-    #     return avg_dists / np.sqrt(len(candidates))
     
     def normalized_avg_dist(self, src_points, candidates):
         dists = torch.cdist(src_points, candidates)
         min_dists, _ = torch.min(dists, dim=1)
         _, columns = candidates.shape
         return torch.mean(min_dists) / np.sqrt(columns)
+    
+
+    def get_predictions(self, data):
+        X = data.drop(columns=['cardio'])
+        y = data['cardio']
+        y = y.round(0)
+        y = y.astype(int)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        learners = [(AdaBoostClassifier(n_estimators=50))]
+        pred = []
+
+        for i in range(len(learners)):
+            model = learners[i]
+            model.fit(X_train, y_train)
+
+
+            for j in range (len(X_test)):
+                #print(X_test.loc[[j]])
+                pred.append(model.predict(X_test.iloc[[j]]))
+            
+        return pred
+    
+
+    def eval_fidelity(self, pred1, pred2):
+        same_pred = 0
+        dif_pred = 0
+        if len(pred1) != len(pred2):
+            print("Error: different sizes")
+        
+        for i in range(len(pred1)):
+            if pred1[i] == pred2[i]:
+                same_pred += 1
+            else:
+                dif_pred += 1
+
+        ratio = same_pred / (same_pred + dif_pred)
+        return ratio, same_pred, dif_pred
