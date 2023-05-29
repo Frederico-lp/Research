@@ -416,7 +416,7 @@ class FPGANSynthesizer(BaseSynthesizer):
                 rate = 0.15
 
                 loss = -torch.mean(y_fake) + cross_entropy
-                losses.append(loss.detach().cpu().numpy() * rate)
+                losses.append(loss.detach().cpu().numpy())
 
                 tranformed_privacy = -self.normalized_avg_dist(fakeact, real)
                 tranformed_privacies.append(-tranformed_privacy.detach().cpu().numpy())
