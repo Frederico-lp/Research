@@ -272,7 +272,7 @@ class FPGANSynthesizer(BaseSynthesizer):
         if invalid_columns:
             raise ValueError('Invalid columns found: {}'.format(invalid_columns))
 
-    def fit(self, train_data, discrete_columns=tuple(), epochs=None):
+    def fit(self, train_data, discrete_columns=tuple(), epochs=None, rate=0.5):
         """Fit the CTGAN Synthesizer models to the training data.
         Args:
             train_data (numpy.ndarray or pandas.DataFrame):
@@ -288,6 +288,7 @@ class FPGANSynthesizer(BaseSynthesizer):
         #real_privacies = []
         tranformed_privacies = []
         #fidelities = []
+        original_losses = []
 
         if epochs is None:
             epochs = self._epochs
@@ -412,23 +413,25 @@ class FPGANSynthesizer(BaseSynthesizer):
                 else:
                     cross_entropy = self._cond_loss(fake, c1, m1)
 
-
-                rate = 0.15
+                scaling = 0.25
 
                 loss = -torch.mean(y_fake) + cross_entropy
-                losses.append(loss.detach().cpu().numpy())
+                loss = loss * scaling
+                original_losses.append(loss.detach().cpu().numpy())
 
                 tranformed_privacy = -self.normalized_avg_dist(fakeact, real)
-                tranformed_privacies.append(-tranformed_privacy.detach().cpu().numpy())
+                tranformed_privacies.append(tranformed_privacy.detach().cpu().numpy())
 
             
                 # if rate < 0.5:
                 #     rate = 0.5
 
-                #loss_g = (loss * rate) + (tranformed_privacy)
+                loss_g = (loss * rate) + ( (1 - rate ) * tranformed_privacy)
+
+                losses.append(loss_g.detach().cpu().numpy())
 
                 #loss_g = -torch.mean(y_fake) + cross_entropy
-                loss_g = loss
+                #loss_g = loss
 
 
 
@@ -454,7 +457,7 @@ class FPGANSynthesizer(BaseSynthesizer):
             
 
         #return losses, real_privacies, tranformed_privacies, fidelities
-        return losses, tranformed_privacies
+        return original_losses, tranformed_privacies, losses
 
     def sample(self, n, condition_column=None, condition_value=None):
         """Sample data similar to the training data.
