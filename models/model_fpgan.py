@@ -422,10 +422,6 @@ class FPGANSynthesizer(BaseSynthesizer):
                 tranformed_privacy = -self.normalized_avg_dist(fakeact, real)
                 tranformed_privacies.append(tranformed_privacy.detach().cpu().numpy())
 
-            
-                # if rate < 0.5:
-                #     rate = 0.5
-
                 loss_g = (loss * rate) + ( (1 - rate ) * tranformed_privacy)
 
                 losses.append(loss_g.detach().cpu().numpy())
@@ -433,20 +429,6 @@ class FPGANSynthesizer(BaseSynthesizer):
                 #loss_g = -torch.mean(y_fake) + cross_entropy
                 #loss_g = loss
 
-
-
-                ##############################################################
-                # #privacy
-                # samples = self.sample(100)
-                # real_privacy = normalized_avg_dist(samples, original_data[:100])
-                # real_privacies.append(real_privacy)
-                ##############################################################
-                # #fidelity
-                # pred1 = self.get_predictions(samples)
-                # pred2 = self.get_predictions(original_data[:100])
-                # fidelity, _, _ = self.eval_fidelity(pred1, pred2)
-                # fidelities.append(fidelity)
-                ##############################################################
                 optimizerG.zero_grad()
                 loss_g.backward()
                 optimizerG.step()
