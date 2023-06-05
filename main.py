@@ -1,5 +1,6 @@
 from models.model_ctgan import CTGANSynthesizer
 from models.model_dpctgan import DPCTGANSynthesizer
+from models.model_fpgan import FPGANSynthesizer
 
 import ctgan
 from sklearn.datasets import load_breast_cancer
@@ -21,7 +22,7 @@ class Main:
         print("Initializing class...")
         self.dataset = dataset
         self.target = target
-        self.ctgan = CTGANSynthesizer(epochs=5)
+        self.ctgan = CTGANSynthesizer(epochs=25)
         self.dpctgan = DPCTGANSynthesizer(verbose=True,
                             epochs=1,
                             clip_coeff=0.1,
@@ -29,6 +30,7 @@ class Main:
                             target_epsilon=1, #4
                             target_delta=1e-5
                             )
+        self.fpgan = FPGANSynthesizer(epochs=25)
 
     def prepare_data(self, sep=',', drop_columns=None, flag=0):
         print("Preparing data...")
@@ -57,6 +59,7 @@ class Main:
         print("Training models...")
         self.ctgan.fit(data)
         self.dpctgan.fit(data)
+        self.fpgan.fit(data)
 
     def save_models(self, dataset_name):
         if not os.path.exists('./saved_models'):
@@ -64,10 +67,12 @@ class Main:
 
         torch.save(self.ctgan, './saved_models/ctgan' + dataset_name + '.pt')
         torch.save(self.dpctgan, './saved_models/dpctgan' + dataset_name + '.pt')
+        torch.save(self.fpgan, './saved_models/fpgan' + dataset_name + '.pt')
 
     def load_models(self, dataset_name):
         self.ctgan = torch.load('./saved_models/ctgan' + dataset_name + '.pt')
         self.dpctgan = torch.load('./saved_models/dpctgan' + dataset_name + '.pt')
+        self.fpgan = torch.load('./saved_models/fpgan' + dataset_name + '.pt')
 
 
     def generate(self, model):
@@ -75,6 +80,8 @@ class Main:
             samples = self.ctgan.sample(len(self.dataset))
         elif model == 'dpctgan':
             samples = self.dpctgan.sample(len(self.dataset))
+        elif model == 'fpgan':
+            samples = self.fpgan.sample(len(self.dataset))
         else:
             print('Error: model not found')
 

@@ -1,12 +1,13 @@
 import numpy as np
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from imblearn.under_sampling import RandomUnderSampler
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, roc_auc_score
 
-def get_predictions(X_train, y_train, X_test, y_test, undersample = False):
+def get_predictions(X_train, y_train, X_test, y_test, undersample = True):
     if undersample:
-        rus = RandomUnderSampler(random_state=42)
-        X_train, y_train = rus.fit_resample(X_train, y_train)
+        sampling_strategy = 0.75
+        rus = RandomUnderSampler(random_state=42, sampling_strategy=sampling_strategy)
+        X_train, y_train = rus.fit_resample(X_train, y_train) # type: ignore
         #X_test, y_test = rus.fit_resample(X_test, y_test)
 
 
@@ -66,5 +67,8 @@ def eval_fidelity(pred1, pred2):
 
 def get_accuracy(y, pred):
     return accuracy_score(y, pred)
+
+def get_roc_auc(y, pred):
+    return roc_auc_score(y, pred)
     
 
