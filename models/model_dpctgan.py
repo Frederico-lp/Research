@@ -111,6 +111,8 @@ class DPCTGANSynthesizer(CTGANSynthesizer):
         steps = 0
         epoch = 0
 
+        count = 0
+
         steps_per_epoch = max(len(train_data) // self._batch_size, 1)
 
         while epsilon < self._target_epsilon:
@@ -210,6 +212,8 @@ class DPCTGANSynthesizer(CTGANSynthesizer):
                 # Calculate G's loss based on this output
                 loss_g = -torch.mean(y_fake) + cross_entropy
 
+                count +=1
+
                 optimizerG.zero_grad()
                 loss_g.backward()  # Calculate gradients for G
                 optimizerG.step()  # Update G
@@ -234,6 +238,8 @@ class DPCTGANSynthesizer(CTGANSynthesizer):
                       f"Loss D: {loss_d.detach().cpu(): .4f}, "
                       f"Epsilon: {epsilon:.4f}", flush=True)
                 i += 1
+        
+        return count
 
     def plot_losses(self, save=False):
         plt.figure(figsize=(10, 5))

@@ -30,16 +30,6 @@ def get_predictions(X_train, y_train, X_test, y_test, undersample = True):
     return pred
 
 def eval_fidelity(pred1, pred2):
-    
-    values = np.array(pred1)
-    values = np.unique(values)
-    class1 = values[0]
-    class2 = values[1]
-    class1_same = 0
-    class1_dif = 0
-    class2_same = 0
-    class2_dif = 0
-
     same_pred = 0
     dif_pred = 0
     if len(pred1) != len(pred2):
@@ -48,21 +38,43 @@ def eval_fidelity(pred1, pred2):
     for i in range(len(pred1)):
         if pred1[i] == pred2[i]:
             same_pred += 1
-            if pred1[i] == class1:
-                class1_same += 1
-            else:
-                class2_same += 1
 
         else:
             dif_pred += 1
-            class1_dif += 1
-            class2_dif += 1
 
     ratio = same_pred / (same_pred + dif_pred)
-    class1_ratio = class1_same / (class1_same + class1_dif)
-    class2_ratio = class2_same / (class2_same + class2_dif)
 
-    return ratio, class1_ratio, class2_ratio
+    return ratio
+
+def get_class_ratios(real, fake, target):
+    
+    values = np.array(real)
+    values = np.unique(values)
+    class1 = values[0]
+    class2 = values[1]
+    TP = 0
+    TN = 0
+    FP = 0
+    FN = 0
+
+    
+    for i in range(len(fake)):
+        if real[i] == fake[i]:  # TP or TN
+            if real[i] == target:
+                TP += 1
+            else:             # TN
+                TN += 1
+
+        else:                # FP or FN
+            if real[i] == target:
+                FN += 1
+            else:             # FP  
+                FP += 1
+        
+    class1_ratio = (TP + FN) / (TP + TN + FP + FN)
+    class2_ratio = (TN + FP) / (TP + TN + FP + FN)
+
+    return class1_ratio, class2_ratio
 
 
 def get_accuracy(y, pred):
