@@ -71,6 +71,7 @@ def get_class_ratios(real, fake, target):
             else:             # FP  
                 FP += 1
         
+    print(TP, TN, FP, FN)
     class1_ratio = (TP + FN) / (TP + TN + FP + FN)
     class2_ratio = (TN + FP) / (TP + TN + FP + FN)
 
